@@ -1,14 +1,16 @@
 package com.meetme.meetmeclient
 
-import androidx.appcompat.app.AppCompatActivity
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
-
+import androidx.appcompat.app.AppCompatActivity
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
+
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -21,6 +23,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+        // TODO configure map https://developers.google.com/maps/documentation/android-api/start
+    }
+
+    override fun onStart() {
+        super.onStart()
+        startUserPositionBackgroundService()
+    }
+
+    private fun startUserPositionBackgroundService() {
+        val userPositionApiUrl = "TODO_API_URL"
+        val userPositionIntent = Intent(this, UserPositionService::class.java)
+        userPositionIntent.putExtra("USER_POSITION_API_URL", userPositionApiUrl)
+        startService(userPositionIntent)
     }
 
     /**
