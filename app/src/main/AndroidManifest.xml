@@ -43,9 +43,7 @@
         </activity>
 
         <service
-            android:name=".UserPositionService"
-            android:exported="false"
-            android:process=":UserPositionServiceProcess"/>
+            android:name=".ForegroundLocationService" />
     </application>
 
 </manifest>

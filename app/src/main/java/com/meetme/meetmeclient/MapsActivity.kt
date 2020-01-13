@@ -1,10 +1,13 @@
 package com.meetme.meetmeclient
 
 import android.Manifest
-import android.content.Context
-import android.content.Intent
+import android.content.*
 import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Bundle
+import android.os.IBinder
+import android.util.Log
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -14,13 +17,15 @@ import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import androidx.core.app.ActivityCompat
-
-
-
-
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
+
+    //variables for location service
+    private lateinit var mReceiver: LocationReceiver
+    private var mService : ForegroundLocationService? = null
+    private var mBound = false
 
     private lateinit var mMap: GoogleMap
     private lateinit var userPositionIntent : Intent
@@ -31,9 +36,29 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
 
+    private val mServiceConnection = object : ServiceConnection {
+
+        override fun onServiceConnected(name: ComponentName, service: IBinder) {
+            val binder = service as ForegroundLocationService.LocalBinder
+            Log.i("Service connection", "polaczono!!!")
+            mService = binder.service
+            mService?.requestLocationUpdates()
+            mBound = true
+        }
+
+        override fun onServiceDisconnected(name: ComponentName) {
+
+            Log.i("Service connection", "rozlaczono!!!")
+            mService = null
+            mBound = false
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContentView(R.layout.activity_maps)
+        mReceiver = LocationReceiver()
 
         if(arePermissionsGranted())
             permissionsGranted = true
@@ -52,16 +77,43 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             startUserPositionBackgroundService()
     }
 
-    private fun startUserPositionBackgroundService() {
-        val userPositionApiUrl = "TODO_API_URL"
-        userPositionIntent = Intent(this, UserPositionService::class.java)
-        userPositionIntent.putExtra("USER_POSITION_API_URL", userPositionApiUrl)
-        startService(userPositionIntent)
+    override fun onResume() {
+        super.onResume()
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+            mReceiver,
+            IntentFilter(ForegroundLocationService.ACTION_BROADCAST)
+        )
+    }
+
+    override fun onPause() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver)
+        super.onPause()
+    }
+
+    override fun onStop() {
+        if (mBound) {
+            unbindService(mServiceConnection)
+            mBound = false
+        }
+        super.onStop()
     }
 
     override fun onDestroy() {
-        stopService(userPositionIntent)
+        if (mBound) {
+            unbindService(mServiceConnection)
+            mBound = false
+        }
+        stopService(Intent(applicationContext, ForegroundLocationService::class.java))
         super.onDestroy()
+    }
+
+    private fun startUserPositionBackgroundService() {
+        val userPositionApiUrl = "TODO_API_URL"
+        var intent = Intent(applicationContext, ForegroundLocationService::class.java)
+        bindService(
+            intent, mServiceConnection,
+            Context.BIND_AUTO_CREATE
+        )
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -104,5 +156,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             startUserPositionBackgroundService()
         else
             finish()
+    }
+
+    private inner class LocationReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val location : Location = intent.getParcelableExtra(ForegroundLocationService.EXTRA_LOCATION)
+            if (location != null) {
+                Toast.makeText(applicationContext, location.latitude.toString() + " " + location.longitude.toString(),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
     }
 }
