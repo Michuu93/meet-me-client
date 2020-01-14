@@ -192,12 +192,6 @@ class ForegroundLocationService : Service() {
 
         intent.putExtra(EXTRA_STARTED_FROM_NOTIFICATION, true)
 
-        // The PendingIntent that leads to a call to onStartCommand() in this service.
-        val servicePendingIntent = PendingIntent.getService(
-            this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT
-        )
-
         // The PendingIntent to launch activity.
         val activityPendingIntent = PendingIntent.getActivity(
             this, 0,
@@ -205,17 +199,21 @@ class ForegroundLocationService : Service() {
         )
 
         val builder = NotificationCompat.Builder(this)
+            .addAction(R.drawable.ic_android_black_24dp, "Launch activity", activityPendingIntent)
             .setContentText(text)
             .setOngoing(true)
             .setPriority(Notification.PRIORITY_HIGH)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setTicker(text)
             .setWhen(System.currentTimeMillis())
+            .setOnlyAlertOnce(true)
 
         // Set the Channel ID for Android O.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             builder.setChannelId(CHANNEL_ID) // Channel ID
         }
+
+        var notif = builder.build()
 
         return builder.build()
     }
