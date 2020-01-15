@@ -10,14 +10,11 @@ import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import androidx.core.app.ActivityCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.Marker
 
 
@@ -30,6 +27,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var mMap: GoogleMap
     private lateinit var mMarker: Marker
+    private var centeredMap = false
     private lateinit var userPositionIntent : Intent
     private var permissionsGranted = false
     private val permissionRequestCode = 123
@@ -42,7 +40,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
             val binder = service as ForegroundLocationService.LocalBinder
-            Log.i("Service connection", "polaczono!!!")
             mService = binder.service
             mService?.requestLocationUpdates()
             mBound = true
@@ -50,7 +47,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
         override fun onServiceDisconnected(name: ComponentName) {
 
-            Log.i("Service connection", "rozlaczono!!!")
             mService = null
             mBound = false
         }
@@ -124,17 +120,43 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         // Add a marker in Sydney and move the camera
         val sydney = LatLng(52.401492, 16.925011)
         mMap.setMinZoomPreference(15f)
-        mMarker = mMap.addMarker(MarkerOptions().position(sydney).title("Ty"))
+        mMarker = mMap.addMarker(MarkerOptions().position(sydney).title(getString(R.string.user_title)))
         mMarker.isDraggable = false
         mMap.moveCamera(CameraUpdateFactory.newLatLng(mMarker.position))
-        mMap.uiSettings.isScrollGesturesEnabled = false
-
     }
 
     fun updateMapPosition(location: Location?)
     {
-        mMarker.position = convertToLatLng(location)
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(mMarker.position))
+        if(mMap != null) {
+            if(!centeredMap) {
+                mMap.moveCamera(CameraUpdateFactory.newLatLng(convertToLatLng(location)))
+                centeredMap = true
+            }
+            mMap.clear()
+            addUserMarker(convertToLatLng(location))
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(convertToLatLng(location)))
+        //test only
+        var usersData = listOf(UserData(LatLng(52.433072, 16.917327), "u1", "u1"),
+            UserData(LatLng(52.433680, 16.918340), "u2", "u2"),
+            UserData(LatLng(52.434386, 16.917310), "u3", "u3"))
+            updateUsersMarkers(usersData)
+        }
+    }
+
+    fun updateUsersMarkers(usersData: Collection<UserData>) {
+
+        mMap.clear()
+        addUserMarker(mMarker.position)
+        usersData.forEach {u -> updateUserMarker(u)}
+    }
+
+    fun addUserMarker(position: LatLng) {
+        mMarker = mMap.addMarker(MarkerOptions().position(position).title(getString(R.string.user_title)))
+        mMarker.isDraggable = false
+    }
+
+    fun updateUserMarker(user: UserData) {
+        mMap.addMarker(MarkerOptions().position(user.location).title(user.title))
     }
 
     fun convertToLatLng(location : Location?) : LatLng
