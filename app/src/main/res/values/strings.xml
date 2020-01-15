@@ -2,4 +2,11 @@
     <string name="app_name">meetme</string>
     <string name="title_activity_maps">Map</string>
     <string name="my_position">My position</string>
+    <string name="your_profile">Your Profile</string>
+    <string name="home">Home</string>
+    <string name="username">Username: </string>
+    <string name="user_description">User description: </string>
+    <string name="gender">Gender:</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
 </resources>
