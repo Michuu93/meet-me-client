@@ -1,14 +1,20 @@
 package com.meetme.meetmeclient.profile
 
+import android.app.Activity
 import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.graphics.drawable.toBitmap
 import androidx.core.view.isVisible
 import com.meetme.meetmeclient.MapsActivity
 import com.meetme.meetmeclient.R
@@ -16,14 +22,47 @@ import com.meetme.meetmeclient.R
 
 class ProfileActivity : AppCompatActivity() {
 
-    private var editMode: Boolean = false;
+    companion object {
+        const val REQUEST_CAMERA = 100
+    }
+
+    private var imageView: ImageView? = null
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile_activity)
 
+        imageView = findViewById(R.id.profile_image)
+        imageView?.setOnClickListener { selectImage() }
 
+    }
+
+    private fun selectImage() {
+        val options = arrayOf<CharSequence>("Take Photo", "Choose from Gallery", "Cancel")
+        val builder = AlertDialog.Builder(this)
+        builder.setTitle("Add Photo!")
+        builder.setItems(options) { dialog, item ->
+            when {
+                options[item] == "Choose from Gallery" -> {
+                    val intent = Intent(
+                        Intent.ACTION_PICK,
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+                    )
+                    startActivityForResult(intent, REQUEST_CAMERA)
+                }
+                options[item] == "Cancel" -> dialog.dismiss()
+            }
+        }
+        builder.show()
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CAMERA && resultCode == Activity.RESULT_OK) {
+            val photo = data?.extras?.get("data") as Bitmap
+            imageView?.setImageBitmap(photo)
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -54,7 +93,8 @@ class ProfileActivity : AppCompatActivity() {
         val user = User(
             usernameField.text.toString(),
             descriptionField.text.toString(),
-            genderField.text.toString()
+            genderField.text.toString(),
+            imageView?.drawable?.toBitmap()
         )
         //TODO save
     }
