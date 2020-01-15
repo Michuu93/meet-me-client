@@ -18,6 +18,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
 import androidx.core.app.ActivityCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.google.android.gms.maps.model.Marker
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -28,6 +29,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private var mBound = false
 
     private lateinit var mMap: GoogleMap
+    private lateinit var mMarker: Marker
     private lateinit var userPositionIntent : Intent
     private var permissionsGranted = false
     private val permissionRequestCode = 123
@@ -120,9 +122,24 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mMap = googleMap
 
         // Add a marker in Sydney and move the camera
-        val sydney = LatLng(-34.0, 151.0)
-        mMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney))
+        val sydney = LatLng(52.401492, 16.925011)
+        mMap.setMinZoomPreference(15f)
+        mMarker = mMap.addMarker(MarkerOptions().position(sydney).title("Ty"))
+        mMarker.isDraggable = false
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(mMarker.position))
+        mMap.uiSettings.isScrollGesturesEnabled = false
+
+    }
+
+    fun updateMapPosition(location: Location?)
+    {
+        mMarker.position = convertToLatLng(location)
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(mMarker.position))
+    }
+
+    fun convertToLatLng(location : Location?) : LatLng
+    {
+        return LatLng(location!!.latitude, location!!.longitude)
     }
 
     fun arePermissionsGranted(): Boolean {
@@ -162,9 +179,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         override fun onReceive(context: Context, intent: Intent) {
             val location : Location = intent.getParcelableExtra(ForegroundLocationService.EXTRA_LOCATION)
             if (location != null) {
-                Toast.makeText(applicationContext, location.latitude.toString() + " " + location.longitude.toString(),
+                /*Toast.makeText(applicationContext, location.latitude.toString() + " " + location.longitude.toString(),
                     Toast.LENGTH_SHORT
-                ).show()
+                ).show()*/
+                updateMapPosition(location)
             }
         }
     }
