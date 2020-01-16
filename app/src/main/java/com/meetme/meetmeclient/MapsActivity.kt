@@ -16,6 +16,24 @@ import androidx.core.app.ActivityCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.Marker
+import android.graphics.Bitmap
+import android.R.layout
+import android.view.ViewGroup
+import android.app.Activity
+import android.util.DisplayMetrics
+import android.R.attr.name
+import android.widget.TextView
+import de.hdodenhof.circleimageview.CircleImageView
+import android.content.Context.LAYOUT_INFLATER_SERVICE
+import android.graphics.Canvas
+import androidx.core.content.ContextCompat.getSystemService
+import android.view.LayoutInflater
+import androidx.annotation.DrawableRes
+import androidx.core.app.ComponentActivity
+import androidx.core.app.ComponentActivity.ExtraData
+import android.icu.lang.UCharacter.GraphemeClusterBreak.T
+
+
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -27,14 +45,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var mMap: GoogleMap
     private lateinit var mMarker: Marker
-    private var centeredMap = false
-    private lateinit var userPositionIntent : Intent
+    private var mActualUsers: List<UserData> = emptyList()
     private var permissionsGranted = false
     private val permissionRequestCode = 123
     private val permissions = arrayOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
+
+    //for test only
+    private var usersData = listOf(UserData(1, LatLng(52.433072, 16.917327), "u1", "u1"),
+        UserData(2, LatLng(52.433680, 16.918340), "u2", "u2"),
+        UserData(3, LatLng(52.434386, 16.917310), "u3", "u3"))
 
     private val mServiceConnection = object : ServiceConnection {
 
@@ -120,7 +142,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         // Add a marker in Sydney and move the camera
         val sydney = LatLng(52.401492, 16.925011)
         mMap.setMinZoomPreference(15f)
+        mMap.uiSettings.isScrollGesturesEnabled = false
         mMarker = mMap.addMarker(MarkerOptions().position(sydney).title(getString(R.string.user_title)))
+        mMap.uiSettings.isTiltGesturesEnabled = false
+        mMap.setOnMarkerClickListener { marker ->
+            if (marker.isInfoWindowShown) {
+                marker.hideInfoWindow()
+            } else {
+                marker.showInfoWindow()
+            }
+            true
+        }
         mMarker.isDraggable = false
         mMap.moveCamera(CameraUpdateFactory.newLatLng(mMarker.position))
     }
@@ -128,35 +160,74 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     fun updateMapPosition(location: Location?)
     {
         if(mMap != null) {
-            if(!centeredMap) {
-                mMap.moveCamera(CameraUpdateFactory.newLatLng(convertToLatLng(location)))
-                centeredMap = true
-            }
-            mMap.clear()
-            addUserMarker(convertToLatLng(location))
+            updateUserMarker(convertToLatLng(location))
             mMap.moveCamera(CameraUpdateFactory.newLatLng(convertToLatLng(location)))
         //test only
-        var usersData = listOf(UserData(LatLng(52.433072, 16.917327), "u1", "u1"),
-            UserData(LatLng(52.433680, 16.918340), "u2", "u2"),
-            UserData(LatLng(52.434386, 16.917310), "u3", "u3"))
-            updateUsersMarkers(usersData)
+            usersData.forEach{n ->
+                n.location = LatLng(n.location.latitude + 0.00011, n.location.longitude + 0.00011)}
+            updateNearUsersMarkers(usersData)
         }
+        //TODO: add call for api for new ppl
     }
 
-    fun updateUsersMarkers(usersData: Collection<UserData>) {
-
-        mMap.clear()
-        addUserMarker(mMarker.position)
-        usersData.forEach {u -> updateUserMarker(u)}
+    fun updateNearUsersMarkers(newUsersData: List<UserData>) {
+        var farUsers = getFarUsers(newUsersData)
+        var oldUsers = getOldUsers(newUsersData)
+        var newUsers = getNewUsers(newUsersData)
+        farUsers.forEach { n -> n.marker?.remove()}
+        mActualUsers = oldUsers + newUsers
+        mActualUsers.forEach {n -> updateNearUserMarker(n)}
     }
 
-    fun addUserMarker(position: LatLng) {
-        mMarker = mMap.addMarker(MarkerOptions().position(position).title(getString(R.string.user_title)))
+    fun updateUserMarker(position: LatLng) {
+        if(mMarker == null)
+            mMarker = mMap.addMarker(MarkerOptions().position(position).title(getString(R.string.user_title)))
+        else
+            mMarker.position = position
         mMarker.isDraggable = false
     }
 
-    fun updateUserMarker(user: UserData) {
-        mMap.addMarker(MarkerOptions().position(user.location).title(user.title))
+    fun updateNearUserMarker(user: UserData) {
+        if(user.marker != null)
+            user.marker?.position = user?.location
+        else
+            user.marker = mMap.addMarker(MarkerOptions().position(user.location).title(user.title).snippet(user.descritprion))
+        user.marker?.isDraggable = false
+    }
+
+    fun getFarUsers(newUsers: List<UserData>) : List<UserData> {
+        var farUsers : List<UserData> = emptyList()
+        mActualUsers.forEach {
+            n ->
+            var exists = false
+            newUsers.forEach {k -> if(n.id == k.id)exists = true}
+            if(!exists)
+                farUsers += n
+        }
+        return farUsers
+    }
+
+    fun getOldUsers(newUsers: List<UserData>) : List<UserData> {
+        var oldUsers : List<UserData> = emptyList()
+        newUsers.forEach {
+                n ->
+            var exists = false
+            mActualUsers.forEach {k -> if(n.id == k.id)exists = true}
+            if(exists)
+                oldUsers += n
+        }
+        return oldUsers
+    }
+
+    fun getNewUsers(newUsers: List<UserData>) : List<UserData> {
+        var new: List<UserData> = emptyList()
+        newUsers.forEach { n ->
+            var exists = false
+            mActualUsers.forEach { k -> if (n.id == k.id) exists = true }
+            if (!exists)
+                new += n
+        }
+        return newUsers
     }
 
     fun convertToLatLng(location : Location?) : LatLng
