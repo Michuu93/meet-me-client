@@ -78,7 +78,7 @@ class ProfileActivity : AppCompatActivity() {
 
             }
 
-            private fun saveUserId(userId: kotlin.String?) {
+            private fun saveUserId(userId: String?) {
                 val file: String = USER
                 val fileOutputStream: FileOutputStream
                 try {

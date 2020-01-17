@@ -18,7 +18,6 @@ import com.google.android.gms.maps.*
 import com.google.android.gms.maps.model.Marker
 import android.graphics.Bitmap
 import android.R.layout
-import android.view.ViewGroup
 import android.app.Activity
 import android.util.DisplayMetrics
 import android.R.attr.name
@@ -27,13 +26,12 @@ import de.hdodenhof.circleimageview.CircleImageView
 import android.content.Context.LAYOUT_INFLATER_SERVICE
 import android.graphics.Canvas
 import androidx.core.content.ContextCompat.getSystemService
-import android.view.LayoutInflater
 import androidx.annotation.DrawableRes
 import androidx.core.app.ComponentActivity
 import androidx.core.app.ComponentActivity.ExtraData
 import android.icu.lang.UCharacter.GraphemeClusterBreak.T
-
-
+import android.view.*
+import com.meetme.meetmeclient.profile.ProfileActivity
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -125,6 +123,20 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
         stopService(Intent(applicationContext, ForegroundLocationService::class.java))
         super.onDestroy()
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.getItemId()) {
+            R.id.your_profile -> startActivity(Intent(this, ProfileActivity::class.java))
+
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        val inflater: MenuInflater = menuInflater
+        inflater.inflate(R.menu.menu, menu)
+        return true
     }
 
     private fun startUserPositionBackgroundService() {
