@@ -6,6 +6,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.os.IBinder
+import android.preference.PreferenceManager
 import android.util.Log
 import android.view.Menu
 import android.view.MenuInflater
@@ -28,6 +29,10 @@ import com.meetme.meetmeclient.profile.UserService
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import java.io.BufferedReader
+import java.io.File
+import java.io.FileInputStream
+import java.io.InputStreamReader
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -73,6 +78,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         super.onCreate(savedInstanceState)
 
         setContentView(R.layout.activity_maps)
+        prepareUserFile()
         mReceiver = LocationReceiver()
 
         if (arePermissionsGranted()) {
@@ -86,6 +92,25 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mapFragment.getMapAsync(this)
         // TODO configure map https://developers.google.com/maps/documentation/android-api/start
     }
+
+    private fun prepareUserFile() {
+        val file = File(baseContext.filesDir, ProfileActivity.USER)
+        if (!file.exists()) {
+            file.createNewFile()
+        }
+
+        var fileInputStream: FileInputStream? = null
+        fileInputStream = openFileInput(ProfileActivity.USER)
+        val inputStreamReader = InputStreamReader(fileInputStream)
+        val bufferedReader = BufferedReader(inputStreamReader)
+        val stringBuilder: StringBuilder = StringBuilder()
+        var text: String? = null
+        while ({ text = bufferedReader.readLine(); text }() != null) {
+            stringBuilder.append(text)
+        }
+        getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).edit().putString(ProfileActivity.USER_ID, stringBuilder.toString()).commit()
+    }
+
 
     override fun onStart() {
         super.onStart()

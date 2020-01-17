@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.util.Log
 import android.view.Menu
@@ -34,10 +35,12 @@ class ProfileActivity : AppCompatActivity() {
 
     companion object {
         const val REQUEST_CAMERA = 100
+        const val USER_ID = "user_id"
         const val USERNAME = "username"
         const val USER = "user.txt"
         const val DESCRIPTION = "description"
         const val GENDER = "gender"
+        const val SHARED = "shared"
     }
 
     private var imageView: ImageView? = null
@@ -66,6 +69,7 @@ class ProfileActivity : AppCompatActivity() {
                 if (response.code() == 200) {
                     val userResponse = response.body()!!
                     saveUserId(userResponse.userId)
+                    getSharedPreferences(SHARED, Context.MODE_PRIVATE).edit().putString(ProfileActivity.USER_ID, userResponse.userId).commit()
                 }
 
             }
@@ -85,16 +89,7 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun readUserId(): String {
-        var fileInputStream: FileInputStream? = null
-        fileInputStream = openFileInput(USER)
-        val inputStreamReader = InputStreamReader(fileInputStream)
-        val bufferedReader = BufferedReader(inputStreamReader)
-        val stringBuilder: StringBuilder = StringBuilder()
-        var text: String? = null
-        while ({ text = bufferedReader.readLine(); text }() != null) {
-            stringBuilder.append(text)
-        }
-        return stringBuilder.toString()
+        return getSharedPreferences(SHARED, Context.MODE_PRIVATE).getString(USER_ID, "")!!
     }
 
     private fun getUser(userId: String) {
@@ -136,16 +131,8 @@ class ProfileActivity : AppCompatActivity() {
         imageView = findViewById(R.id.profile)
         imageView?.setOnClickListener { selectImage() }
 
-        prepareUserFile()
         val userId = readUserId()
         getUser(userId)
-    }
-
-    private fun prepareUserFile() {
-        val file = File(baseContext.filesDir, USER)
-        if (!file.exists()) {
-            file.createNewFile()
-        }
     }
 
     private fun selectImage() {

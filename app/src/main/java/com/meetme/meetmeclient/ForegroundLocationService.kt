@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.location.*
+import com.meetme.meetmeclient.profile.ProfileActivity
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -209,7 +210,8 @@ class ForegroundLocationService : Service() {
         println("Location is longitude = ${mLocation!!.longitude} latitude = ${mLocation!!.latitude}")
 
         val newPosition = Position(
-            userId = "test_test",
+            userId = getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).getString(
+                ProfileActivity.USER_ID, "")!!,
             latitude = mLocation!!.latitude,
             longitude = mLocation!!.longitude,
             positionTimestamp = Date().time.toDouble()
