@@ -197,7 +197,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun loadUserData(marker: Marker) {
         //TODO przekazanie userId ze znacznika
-        val call = UserService.service.getUser("09b3fdd5-2504-45be-9174-c3f850b92773")
+        val call = UserService.service.getUser(getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).getString(
+            ProfileActivity.USER_ID, "")!!)
 
         call.enqueue(object : Callback<User> {
             override fun onFailure(call: Call<User>, t: Throwable) {
