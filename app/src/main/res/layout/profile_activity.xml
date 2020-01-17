@@ -42,7 +42,7 @@
             android:id="@+id/profile_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_below="@+id/header_cover_image"
+            android:layout_below="@+id/profile_image"
             android:background="#EBC5C5C5"
             android:elevation="4dp"
             android:paddingBottom="24dp">
@@ -61,17 +61,6 @@
                 android:onClick="editHandler"
                 android:src="@android:drawable/ic_menu_edit" />
 
-            <TextView
-                android:id="@+id/name"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerHorizontal="true"
-                android:layout_marginTop="70dp"
-                android:text="Pobrac username"
-                android:textColor="#fff"
-                android:textSize="24sp"
-                android:textStyle="bold" />
-
         </RelativeLayout>
 
 
@@ -80,7 +69,7 @@
             android:layout_height="match_parent"
             android:layout_below="@+id/profile_layout"
             android:layout_margin="5dp"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="20dp"
             android:background="#fff"
             android:elevation="10dp"
             android:orientation="vertical"
@@ -102,6 +91,7 @@
                 android:focusable="true"
                 android:text="@string/gender"
                 android:textStyle="bold"
+                android:background="@android:color/transparent"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView10" />
 
@@ -143,7 +133,6 @@
                 android:clickable="false"
                 android:focusable="false"
                 android:inputType="none"
-                android:text="TODO pobrac username"
                 app:layout_constraintLeft_toRightOf="@+id/textView10"
                 app:layout_constraintTop_toTopOf="parent" />
 
@@ -157,7 +146,6 @@
                 android:clickable="false"
                 android:focusable="false"
                 android:inputType="none"
-                android:text="pobrać description"
                 app:layout_constraintLeft_toRightOf="@+id/textView7"
                 app:layout_constraintTop_toBottomOf="@+id/textView5" />
 
@@ -171,7 +159,6 @@
                 android:clickable="false"
                 android:focusable="false"
                 android:inputType="none"
-                android:text="pobrać gender"
                 app:layout_constraintLeft_toRightOf="@+id/textView5"
                 app:layout_constraintTop_toBottomOf="@+id/textView10" />
 

@@ -1,10 +1,12 @@
 package com.meetme.meetmeclient.profile
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
-import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.provider.MediaStore
+import android.util.Log
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
@@ -12,46 +14,158 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.graphics.drawable.toBitmap
 import androidx.core.view.isVisible
 import com.meetme.meetmeclient.MapsActivity
 import com.meetme.meetmeclient.R
+import com.meetme.meetmeclient.profile.UserService.Companion.service
+import org.json.JSONObject
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import java.io.BufferedReader
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.InputStreamReader
 
 
 class ProfileActivity : AppCompatActivity() {
 
     companion object {
         const val REQUEST_CAMERA = 100
+        const val USERNAME = "username"
+        const val USER = "user"
+        const val DESCRIPTION = "description"
+        const val GENDER = "gender"
+
     }
+
 
     private var imageView: ImageView? = null
 
+    private fun saveUser(
+        user: User
+    ) {
+
+        val json = JSONObject()
+        json.put(USERNAME, user.userName)
+        json.put(DESCRIPTION, user.userDescription)
+        json.put(GENDER, user.gender)
+
+        val call = service.save(user)
+        //       Snackbar.make(view, "Please enter the password", Snackbar.LENGTH_SHORT).show()
+
+
+        call.enqueue(object : Callback<User> {
+            override fun onFailure(call: Call<User>, t: Throwable) {
+                Log.e("error", "Received an exception $t")
+                setEditMode(false)
+                Toast.makeText(
+                    this@ProfileActivity, getString(R.string.server_error),
+                    Toast.LENGTH_LONG
+                ).show()
+
+            }
+
+            override fun onResponse(call: Call<User>, response: Response<User>) {
+                setEditMode(false)
+                if (response.code() == 200) {
+                    val userResponse = response.body()!!
+                    saveUserId(userResponse.userId)
+                }
+
+            }
+
+            private fun saveUserId(userId: kotlin.String?) {
+                val file: String = USER
+                val fileOutputStream: FileOutputStream
+                try {
+                    fileOutputStream = openFileOutput(file, Context.MODE_PRIVATE)
+                    fileOutputStream.write(userId?.toByteArray())
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+
+        })
+    }
+
+    private fun readUserId(): String {
+        var fileInputStream: FileInputStream? = null
+        fileInputStream = openFileInput(USER)
+        val inputStreamReader = InputStreamReader(fileInputStream)
+        val bufferedReader = BufferedReader(inputStreamReader)
+        val stringBuilder: StringBuilder = StringBuilder()
+        var text: String? = null
+        while ({ text = bufferedReader.readLine(); text }() != null) {
+            stringBuilder.append(text)
+        }
+        return stringBuilder.toString()
+    }
+
+    private fun getUser() {
+        val call = service.getUser("11")
+        call.enqueue(object : Callback<User> {
+            override fun onFailure(call: Call<User>, t: Throwable) {
+                Log.e("error", "Received an exception $t")
+                Toast.makeText(
+                    this@ProfileActivity, getString(R.string.server_error),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+
+            override fun onResponse(call: Call<User>, response: Response<User>) {
+                if (response.code() == 200) {
+                    val userResponse = response.body()!!
+
+                    Log.i("t", "$userResponse")
+                    val (usernameField, descriptionField, genderField) = getUserForm()
+
+                    usernameField.setText(userResponse.userName)
+                    descriptionField.setText(userResponse.userDescription)
+                    genderField.setText(userResponse.gender)
+
+                } else if (response.code() == 404) {
+                    Toast.makeText(
+                        this@ProfileActivity, getString(R.string.update_profile),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+
+        })
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.profile_activity)
 
-        imageView = findViewById(R.id.profile_image)
+        imageView = findViewById(R.id.profile)
         imageView?.setOnClickListener { selectImage() }
+
+        getUser()
 
     }
 
     private fun selectImage() {
-        val options = arrayOf<CharSequence>("Take Photo", "Choose from Gallery", "Cancel")
+        val chooseOption = getString(R.string.choose_photo)
+        val cancelOption = getString(R.string.cancel)
+        val options =
+            arrayOf<CharSequence>(chooseOption, cancelOption)
         val builder = AlertDialog.Builder(this)
         builder.setTitle("Add Photo!")
         builder.setItems(options) { dialog, item ->
             when {
-                options[item] == "Choose from Gallery" -> {
+                options[item] == chooseOption -> {
                     val intent = Intent(
                         Intent.ACTION_PICK,
                         MediaStore.Images.Media.EXTERNAL_CONTENT_URI
                     )
                     startActivityForResult(intent, REQUEST_CAMERA)
                 }
-                options[item] == "Cancel" -> dialog.dismiss()
+                options[item] == cancelOption -> dialog.dismiss()
             }
         }
         builder.show()
@@ -60,8 +174,14 @@ class ProfileActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQUEST_CAMERA && resultCode == Activity.RESULT_OK) {
-            val photo = data?.extras?.get("data") as Bitmap
-            imageView?.setImageBitmap(photo)
+            val imageUri = data?.data
+            val image =
+                BitmapFactory.decodeStream(
+                    imageUri?.let { contentResolver.openInputStream(it) },
+                    null,
+                    null
+                )
+            imageView?.setImageBitmap(image)
         }
     }
 
@@ -91,12 +211,12 @@ class ProfileActivity : AppCompatActivity() {
 
         val (usernameField, descriptionField, genderField) = getUserForm()
         val user = User(
+            null,
             usernameField.text.toString(),
             descriptionField.text.toString(),
-            genderField.text.toString(),
-            imageView?.drawable?.toBitmap()
+            genderField.text.toString()
         )
-        //TODO save
+        saveUser(user)
     }
 
     private fun setEditMode(editMode: Boolean) {
@@ -122,11 +242,11 @@ class ProfileActivity : AppCompatActivity() {
     private fun setFieldEditable(field: EditText, editable: Boolean) {
         field.isFocusable = editable
         field.isClickable = editable
+        field.isFocusableInTouchMode = editable
     }
 
     private fun setButtonVisible(button: Button, visible: Boolean) {
         button.isVisible = visible
     }
-
 
 }

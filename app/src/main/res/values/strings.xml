@@ -9,4 +9,7 @@
     <string name="gender">Gender:</string>
     <string name="save">Save</string>
     <string name="cancel">Cancel</string>
+    <string name="server_error">Server error</string>
+    <string name="update_profile">Update your profile</string>
+    <string name="choose_photo">Choose from gallery</string>
 </resources>

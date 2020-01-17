@@ -1,10 +1,10 @@
 package com.meetme.meetmeclient.profile
 
-import android.graphics.Bitmap
+import com.google.gson.annotations.SerializedName
 
-class User(
+data class User(
+    var userId: String?,
     var userName: String,
-    var userDescription: String,
-    var gender: String,
-    var photo: Bitmap?
+    var userDescription: String?,
+    var gender: String?
 )
