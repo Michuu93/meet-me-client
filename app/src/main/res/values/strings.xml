@@ -1,4 +1,19 @@
 <resources>
     <string name="app_name">meetme</string>
     <string name="title_activity_maps">Map</string>
+    <string name="my_position">My position</string>
+    <string name="your_profile">Your Profile</string>
+    <string name="home">Home</string>
+    <string name="username">Username: </string>
+    <string name="user_description">User description: </string>
+    <string name="gender">Gender:</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="server_error">Server error</string>
+    <string name="update_profile">Update your profile</string>
+    <string name="choose_photo">Choose from gallery</string>
+    <string name="user_title">Title</string>
+    <string name="username_validation">Please enter the username</string>
+    <string name="description_validation">Please enter the description</string>
+    <string name="gender_validation">Please enter the gender</string>
 </resources>
