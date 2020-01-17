@@ -217,7 +217,7 @@ class ForegroundLocationService : Service() {
             positionTimestamp = Date().time.toDouble()
         )
 
-        println("Sending user position to backend api (url=$ApiConfiguration.BASE_URL, position=$newPosition)")
+        println("Sending user position to server, position=$newPosition)")
 
         val call = PositionService.service.savePosition(newPosition)
         call.enqueue(object : Callback<Void> {
