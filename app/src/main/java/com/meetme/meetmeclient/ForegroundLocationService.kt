@@ -9,15 +9,15 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.location.*
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
+import java.util.*
 
 class ForegroundLocationService : Service() {
-    //notification properties
     private val CHANNEL_ID = "location_channel"
     private val NOTIFICATION_ID = 111111
     private lateinit var mNotificationManager: NotificationManager
-    private var mChangingConfiguration = false
-    //const string
-    private val apiUrl = "url"
     private val EXTRA_STARTED_FROM_NOTIFICATION = "started_from_notification"
 
     companion object {
@@ -130,10 +130,10 @@ class ForegroundLocationService : Service() {
     }
 
     private fun onNewLocation(lastLocation: Location?) {
-        sendUserPosition(apiUrl)
         Log.i(TAG, "New location: $lastLocation")
 
         mLocation = lastLocation
+        mLocation?.let { sendUserPosition() }
 
         // Notify anyone listening for broadcasts about the new location.
         val intent = Intent(ACTION_BROADCAST)
@@ -205,10 +205,28 @@ class ForegroundLocationService : Service() {
         val service = s
     }
 
-    private fun sendUserPosition(apiUrl: String?) {
-        // TODO send user position to backend api
-        println("Location is longitude = ${mLocation?.longitude} latitude = ${mLocation?.latitude}")
-        println("Sending user position to backend api (url = ${apiUrl})")
+    private fun sendUserPosition() {
+        println("Location is longitude = ${mLocation!!.longitude} latitude = ${mLocation!!.latitude}")
+
+        val newPosition = Position(
+            userId = "test_test",
+            latitude = mLocation!!.latitude,
+            longitude = mLocation!!.longitude,
+            positionTimestamp = Date().time.toDouble()
+        )
+
+        println("Sending user position to backend api (url=$ApiConfiguration.BASE_URL, position=$newPosition)")
+
+        val call = PositionService.service.savePosition(newPosition)
+        call.enqueue(object : Callback<Void> {
+            override fun onFailure(call: Call<Void>, t: Throwable) {
+                Log.e("error", "Received an exception $t")
+            }
+
+            override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                // do nothing
+            }
+        })
     }
 
     private fun serviceIsRunningInForeground(context: Context): Boolean {
