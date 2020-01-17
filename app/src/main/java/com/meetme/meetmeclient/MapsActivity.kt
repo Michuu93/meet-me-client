@@ -4,7 +4,6 @@ import android.Manifest
 import android.content.*
 import android.content.pm.PackageManager
 import android.location.Location
-import android.os.AsyncTask
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
@@ -65,7 +64,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         }
 
         override fun onServiceDisconnected(name: ComponentName) {
-
             mService = null
             mBound = false
         }
@@ -77,10 +75,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         setContentView(R.layout.activity_maps)
         mReceiver = LocationReceiver()
 
-        if (arePermissionsGranted())
+        if (arePermissionsGranted()) {
             permissionsGranted = true
-        else
+        } else {
             requestPermissions()
+        }
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
@@ -125,9 +124,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.getItemId()) {
+        when (item.itemId) {
             R.id.your_profile -> startActivity(Intent(this, ProfileActivity::class.java))
-
         }
         return super.onOptionsItemSelected(item)
     }
@@ -139,8 +137,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun startUserPositionBackgroundService() {
-        val userPositionApiUrl = "TODO_API_URL"
-        var intent = Intent(applicationContext, ForegroundLocationService::class.java)
+        val intent = Intent(applicationContext, ForegroundLocationService::class.java)
         bindService(
             intent, mServiceConnection,
             Context.BIND_AUTO_CREATE
@@ -165,7 +162,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             if (marker.isInfoWindowShown) {
                 marker.hideInfoWindow()
             } else {
-               loadUserData(marker)
+                loadUserData(marker)
             }
             true
         }
@@ -181,7 +178,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             override fun onFailure(call: Call<User>, t: Throwable) {
                 Log.e("error", "Received an exception $t")
                 showErrorToast()
-
             }
 
             override fun onResponse(call: Call<User>, response: Response<User>) {
@@ -192,7 +188,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                 } else {
                     showErrorToast()
                 }
-
             }
 
             private fun showErrorToast() {
@@ -201,10 +196,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
                     Toast.LENGTH_LONG
                 ).show()
             }
-
         })
     }
-
 
     fun updateMapPosition(location: Location?) {
         if (mMap != null) {
@@ -219,72 +212,76 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         //TODO: add call for api for new ppl
     }
 
-    fun updateNearUsersMarkers(newUsersData: List<UserData>) {
-        var farUsers = getFarUsers(newUsersData)
-        var oldUsers = getOldUsers(newUsersData)
-        var newUsers = getNewUsers(newUsersData)
+    private fun updateNearUsersMarkers(newUsersData: List<UserData>) {
+        val farUsers = getFarUsers(newUsersData)
+        val oldUsers = getOldUsers(newUsersData)
+        val newUsers = getNewUsers(newUsersData)
         farUsers.forEach { n -> n.marker?.remove() }
         mActualUsers = oldUsers + newUsers
         mActualUsers.forEach { n -> updateNearUserMarker(n) }
     }
 
-    fun updateUserMarker(position: LatLng) {
-        if (mMarker == null)
+    private fun updateUserMarker(position: LatLng) {
+        if (mMarker == null) {
             mMarker =
                 mMap.addMarker(MarkerOptions().position(position).title(getString(R.string.user_title)))
-        else
+        } else {
             mMarker.position = position
+        }
         mMarker.isDraggable = false
     }
 
-    fun updateNearUserMarker(user: UserData) {
+    private fun updateNearUserMarker(user: UserData) {
         if (user.marker != null)
-            user.marker?.position = user?.location
+            user.marker?.position = user.location
         else
             user.marker = mMap.addMarker(
-                MarkerOptions().position(user.location).title(user.title).snippet(user.descritprion)
+                MarkerOptions().position(user.location).title(user.title).snippet(user.description)
             )
         user.marker?.isDraggable = false
     }
 
-    fun getFarUsers(newUsers: List<UserData>): List<UserData> {
+    private fun getFarUsers(newUsers: List<UserData>): List<UserData> {
         var farUsers: List<UserData> = emptyList()
         mActualUsers.forEach { n ->
             var exists = false
             newUsers.forEach { k -> if (n.id == k.id) exists = true }
-            if (!exists)
-                farUsers += n
+            if (!exists) {
+                farUsers = farUsers + n
+            }
         }
         return farUsers
     }
 
-    fun getOldUsers(newUsers: List<UserData>): List<UserData> {
+    private fun getOldUsers(newUsers: List<UserData>): List<UserData> {
         var oldUsers: List<UserData> = emptyList()
         newUsers.forEach { n ->
             var exists = false
             mActualUsers.forEach { k -> if (n.id == k.id) exists = true }
-            if (exists)
-                oldUsers += n
+            if (exists) {
+                oldUsers = oldUsers + n
+            }
         }
         return oldUsers
     }
 
-    fun getNewUsers(newUsers: List<UserData>): List<UserData> {
+    private fun getNewUsers(newUsers: List<UserData>): List<UserData> {
         var new: List<UserData> = emptyList()
         newUsers.forEach { n ->
             var exists = false
             mActualUsers.forEach { k -> if (n.id == k.id) exists = true }
-            if (!exists)
-                new += n
+            if (!exists) {
+                new = new + n
+            }
         }
         return newUsers
     }
 
-    fun convertToLatLng(location: Location?): LatLng {
-        return LatLng(location!!.latitude, location!!.longitude)
+    private fun convertToLatLng(location: Location?): LatLng {
+        return LatLng(location!!.latitude, location.longitude)
     }
 
-    fun arePermissionsGranted(): Boolean {
+    private fun arePermissionsGranted(): Boolean {
         if (ContextCompat.checkSelfPermission(
                 this,
                 Manifest.permission.ACCESS_FINE_LOCATION
@@ -298,7 +295,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         return false
     }
 
-    fun requestPermissions() {
+    private fun requestPermissions() {
         ActivityCompat.requestPermissions(this, permissions, permissionRequestCode)
     }
 
@@ -307,11 +304,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         permissions: Array<out String>,
         grantResults: IntArray
     ) {
-        var grantedAll: Boolean = true
+        var grantedAll = true
         when (requestCode) {
             permissionRequestCode -> {
                 permissions.forEach { i ->
-                    var result = 0
                     if (grantResults.isNotEmpty()) {
                         for (item in grantResults) {
                             if (item == PackageManager.PERMISSION_DENIED)
@@ -331,7 +327,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     private inner class LocationReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             val location: Location =
-                intent.getParcelableExtra(ForegroundLocationService.EXTRA_LOCATION)
+                intent.getParcelableExtra(ForegroundLocationService.EXTRA_LOCATION) as Location
             if (location != null) {
                 /*Toast.makeText(applicationContext, location.latitude.toString() + " " + location.longitude.toString(),
                     Toast.LENGTH_SHORT

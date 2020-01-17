@@ -38,14 +38,11 @@ class ProfileActivity : AppCompatActivity() {
         const val USER = "user.txt"
         const val DESCRIPTION = "description"
         const val GENDER = "gender"
-
     }
-
 
     private var imageView: ImageView? = null
 
     private fun saveUser(user: User) {
-
         val json = JSONObject()
         json.put(USERNAME, user.userName)
         json.put(DESCRIPTION, user.userDescription)
@@ -129,7 +126,6 @@ class ProfileActivity : AppCompatActivity() {
                     setEditMode(true)
                 }
             }
-
         })
     }
 
@@ -143,11 +139,10 @@ class ProfileActivity : AppCompatActivity() {
         prepareUserFile()
         val userId = readUserId()
         getUser(userId)
-
     }
 
     private fun prepareUserFile() {
-        val file = File(getBaseContext().getFilesDir(), USER)
+        val file = File(baseContext.filesDir, USER)
         if (!file.exists()) {
             file.createNewFile()
         }
@@ -191,7 +186,7 @@ class ProfileActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.home -> startActivity(Intent(this, MapsActivity::class.java));
+            R.id.home -> startActivity(Intent(this, MapsActivity::class.java))
         }
         return super.onOptionsItemSelected(item)
     }
@@ -202,7 +197,7 @@ class ProfileActivity : AppCompatActivity() {
         return true
     }
 
-    fun editHandler(v: View) {
+    fun editHandler() {
         setEditMode(true)
     }
 
@@ -239,7 +234,6 @@ class ProfileActivity : AppCompatActivity() {
             Snackbar.make(view, getString(R.string.gender_validation), Snackbar.LENGTH_SHORT).show()
             return false
         }
-
         return true
     }
 
@@ -251,7 +245,6 @@ class ProfileActivity : AppCompatActivity() {
         setButtonVisible(cancelButton, editMode)
 
     }
-
 
     private fun setFieldEditable(field: EditText, editable: Boolean) {
         field.isFocusable = editable

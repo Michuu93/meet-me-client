@@ -1,37 +1,16 @@
 package com.meetme.meetmeclient
 
-import android.app.ActivityManager
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
-import android.app.Service
+import android.app.*
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.location.Location
-import android.os.Binder
-import android.os.Build
-import android.os.Handler
-import android.os.HandlerThread
-import android.os.IBinder
-import android.os.Looper
+import android.os.*
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import android.util.Log
-
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.tasks.OnCompleteListener
-import com.google.android.gms.tasks.Task
+import com.google.android.gms.location.*
 
 class ForegroundLocationService : Service() {
-
-
-
     //notification properties
     private val CHANNEL_ID = "location_channel"
     private val NOTIFICATION_ID = 111111
@@ -42,13 +21,13 @@ class ForegroundLocationService : Service() {
     private val EXTRA_STARTED_FROM_NOTIFICATION = "started_from_notification"
 
     companion object {
-        val ACTION_BROADCAST : String = "broadcast"
-        val EXTRA_LOCATION : String = "location"
+        val ACTION_BROADCAST: String = "broadcast"
+        val EXTRA_LOCATION: String = "location"
     }
 
     private var TAG = "Foreground service"
     private var mBinder = LocalBinder(this)
-    private var mLocation : Location? = null
+    private var mLocation: Location? = null
 
     //location properties
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
@@ -83,7 +62,7 @@ class ForegroundLocationService : Service() {
                 NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_DEFAULT)
 
             // Set the Notification Channel for the Notification Manager.
-            mNotificationManager?.createNotificationChannel(mChannel)
+            mNotificationManager.createNotificationChannel(mChannel)
         }
     }
 
@@ -118,7 +97,7 @@ class ForegroundLocationService : Service() {
             mFusedLocationClient.lastLocation
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful && task.result != null) {
-                        mLocation = task.getResult()
+                        mLocation = task.result
                     } else {
                         Log.w(TAG, "Failed to get location.")
                     }
@@ -145,9 +124,9 @@ class ForegroundLocationService : Service() {
 
     private fun createLocationRequest() {
         mLocationRequest = LocationRequest()
-        mLocationRequest.setInterval(UPDATE_INTERVAL_IN_MILLISECONDS)
-        mLocationRequest.setFastestInterval(UPDATE_INTERVAL_IN_MILLISECONDS / 2)
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY)
+        mLocationRequest.interval = UPDATE_INTERVAL_IN_MILLISECONDS
+        mLocationRequest.fastestInterval = UPDATE_INTERVAL_IN_MILLISECONDS / 2
+        mLocationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
     }
 
     private fun onNewLocation(lastLocation: Location?) {
@@ -227,18 +206,18 @@ class ForegroundLocationService : Service() {
     }
 
     private fun sendUserPosition(apiUrl: String?) {
-
         // TODO send user position to backend api
         println("Location is longitude = ${mLocation?.longitude} latitude = ${mLocation?.latitude}")
         println("Sending user position to backend api (url = ${apiUrl})")
     }
 
-    fun serviceIsRunningInForeground(context: Context): Boolean {
-        val manager = context.getSystemService (
+    private fun serviceIsRunningInForeground(context: Context): Boolean {
+        val manager = context.getSystemService(
             Context.ACTIVITY_SERVICE
         ) as ActivityManager
-        for (service in manager.getRunningServices (
-            Integer.MAX_VALUE)) {
+        for (service in manager.getRunningServices(
+            Integer.MAX_VALUE
+        )) {
             if (ForegroundLocationService::class.java.name == service.service.className) {
                 if (service.foreground) {
                     return true
