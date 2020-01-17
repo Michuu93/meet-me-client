@@ -1,210 +1,282 @@
 package com.meetme.meetmeclient
 
 import android.Manifest
-import android.content.Intent
+import android.content.*
 import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Bundle
-import android.os.Looper
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
+import android.os.IBinder
+import android.util.Log
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.*
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
-import com.meetme.meetmeclient.profile.ProfileActivity
+import androidx.core.app.ActivityCompat
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.google.android.gms.maps.*
+import com.google.android.gms.maps.model.Marker
+import android.graphics.Bitmap
+import android.R.layout
+import android.view.ViewGroup
+import android.app.Activity
+import android.util.DisplayMetrics
+import android.R.attr.name
+import android.widget.TextView
+import de.hdodenhof.circleimageview.CircleImageView
+import android.content.Context.LAYOUT_INFLATER_SERVICE
+import android.graphics.Canvas
+import androidx.core.content.ContextCompat.getSystemService
+import android.view.LayoutInflater
+import androidx.annotation.DrawableRes
+import androidx.core.app.ComponentActivity
+import androidx.core.app.ComponentActivity.ExtraData
+import android.icu.lang.UCharacter.GraphemeClusterBreak.T
+
+
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
+
+    //variables for location service
+    private lateinit var mReceiver: LocationReceiver
+    private var mService : ForegroundLocationService? = null
+    private var mBound = false
+
     private lateinit var mMap: GoogleMap
-    private lateinit var userMarker: Marker
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationRequest: LocationRequest
-    private lateinit var locationCallback: LocationCallback
-    private val baseApiUrl = "API_URL"
-    private val zoomLevel = 15f
+    private lateinit var mMarker: Marker
+    private var mActualUsers: List<UserData> = emptyList()
     private var permissionsGranted = false
     private val permissionRequestCode = 123
     private val permissions = arrayOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
-        Manifest.permission.ACCESS_COARSE_LOCATION,
-        Manifest.permission.INTERNET
+        Manifest.permission.ACCESS_COARSE_LOCATION
     )
+
+    //for test only
+    private var usersData = listOf(UserData(1, LatLng(52.433072, 16.917327), "u1", "u1"),
+        UserData(2, LatLng(52.433680, 16.918340), "u2", "u2"),
+        UserData(3, LatLng(52.434386, 16.917310), "u3", "u3"))
+
+    private val mServiceConnection = object : ServiceConnection {
+
+        override fun onServiceConnected(name: ComponentName, service: IBinder) {
+            val binder = service as ForegroundLocationService.LocalBinder
+            mService = binder.service
+            mService?.requestLocationUpdates()
+            mBound = true
+        }
+
+        override fun onServiceDisconnected(name: ComponentName) {
+
+            mService = null
+            mBound = false
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContentView(R.layout.activity_maps)
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        createLocationRequest()
-        createLocationCallback()
+        mReceiver = LocationReceiver()
 
-        if (arePermissionsGranted()) {
+        if(arePermissionsGranted())
             permissionsGranted = true
-            startLocationUpdates()
-        } else {
+        else
             requestPermissions()
-        }
-
+        // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         val mapFragment = supportFragmentManager
             .findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
-
-
+        // TODO configure map https://developers.google.com/maps/documentation/android-api/start
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.getItemId()) {
-            R.id.your_profile -> startActivity(Intent(this, ProfileActivity::class.java))
-
-        }
-        return super.onOptionsItemSelected(item)
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        val inflater: MenuInflater = menuInflater
-        inflater.inflate(R.menu.menu, menu)
-        return true
-    }
-
-    private fun onLocationUpdate(latitude: Double, longitude: Double) {
-        println("onLocationUpdate [latitude=$latitude, longitude=$longitude]")
-        sendUserPosition(latitude, longitude)
-        updateUserMarker(latitude, longitude)
-        updateNearUsersMarkers(latitude, longitude)
-    }
-
-    private fun sendUserPosition(latitude: Double, longitude: Double) {
-        println("Sending user position to server [baseApiUrl=$baseApiUrl]")
-        // TODO send user positions to server
-    }
-
-    private fun startLocationUpdates() {
-        println("Starting location updates")
-        fusedLocationClient.requestLocationUpdates(
-            locationRequest,
-            locationCallback,
-            Looper.getMainLooper()
-        )
-    }
-
-    private fun stopLocationUpdates() {
-        println("Stopping location updates")
-        fusedLocationClient.removeLocationUpdates(locationCallback)
-    }
-
-
-    private fun updateUserMarker(latitude: Double, longitude: Double) {
-        if (this::mMap.isInitialized) {
-            println("Updating user marker [latitude=${latitude}, longitude=${longitude}]")
-            val myPosition = LatLng(latitude, longitude)
-            if (this::userMarker.isInitialized) {
-                userMarker.position = myPosition
-            } else {
-                userMarker =
-                    mMap.addMarker(MarkerOptions().position(myPosition).title(resources.getString(R.string.my_position)))
-                mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(myPosition, zoomLevel))
-            }
-        }
-    }
-
-    private fun updateNearUsersMarkers(latitude: Double, longitude: Double) {
-        if (this::mMap.isInitialized) {
-            println("Getting near users [latitude=${latitude}, longitude=${longitude}]")
-            // TODO get near users from backend service and create/update on map
-        }
-    }
-
-    private fun createLocationRequest() {
-        locationRequest = LocationRequest.create()
-        locationRequest.priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-        locationRequest.interval = 5000
-        locationRequest.fastestInterval = 1000
-    }
-
-    private fun createLocationCallback() {
-        locationCallback = object : LocationCallback() {
-            override fun onLocationResult(locationResult: LocationResult?) {
-                locationResult?.let {
-                    val lastLocation = it.lastLocation
-                    val latitude = lastLocation.latitude
-                    val longitude = lastLocation.longitude
-                    onLocationUpdate(latitude, longitude)
-                }
-            }
-        }
-    }
-
-    override fun onMapReady(googleMap: GoogleMap) {
-        println("onMapReady")
-        mMap = googleMap
-    }
-
-    override fun onPause() {
-        super.onPause()
-        println("onPause MapsActivity")
-        stopLocationUpdates()
+    override fun onStart() {
+        super.onStart()
+        if(permissionsGranted)
+            startUserPositionBackgroundService()
     }
 
     override fun onResume() {
         super.onResume()
-        println("onResume MapsActivity")
-        startLocationUpdates()
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+            mReceiver,
+            IntentFilter(ForegroundLocationService.ACTION_BROADCAST)
+        )
+    }
+
+    override fun onPause() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver)
+        super.onPause()
+    }
+
+    override fun onStop() {
+        if (mBound) {
+            unbindService(mServiceConnection)
+            mBound = false
+        }
+        super.onStop()
     }
 
     override fun onDestroy() {
+        if (mBound) {
+            unbindService(mServiceConnection)
+            mBound = false
+        }
+        stopService(Intent(applicationContext, ForegroundLocationService::class.java))
         super.onDestroy()
-        println("onDestroy MapsActivity")
-        stopLocationUpdates()
     }
 
-    private fun arePermissionsGranted(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED && ContextCompat.checkSelfPermission(
-            this,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+    private fun startUserPositionBackgroundService() {
+        val userPositionApiUrl = "TODO_API_URL"
+        var intent = Intent(applicationContext, ForegroundLocationService::class.java)
+        bindService(
+            intent, mServiceConnection,
+            Context.BIND_AUTO_CREATE
+        )
     }
 
-    private fun requestPermissions() {
+    override fun onMapReady(googleMap: GoogleMap) {
+        mMap = googleMap
+
+        // Add a marker in Sydney and move the camera
+        val sydney = LatLng(52.401492, 16.925011)
+        mMap.setMinZoomPreference(15f)
+        mMap.uiSettings.isScrollGesturesEnabled = false
+        mMarker = mMap.addMarker(MarkerOptions().position(sydney).title(getString(R.string.user_title)))
+        mMap.uiSettings.isTiltGesturesEnabled = false
+        mMap.setOnMarkerClickListener { marker ->
+            if (marker.isInfoWindowShown) {
+                marker.hideInfoWindow()
+            } else {
+                marker.showInfoWindow()
+            }
+            true
+        }
+        mMarker.isDraggable = false
+        mMap.moveCamera(CameraUpdateFactory.newLatLng(mMarker.position))
+    }
+
+    fun updateMapPosition(location: Location?)
+    {
+        if(mMap != null) {
+            updateUserMarker(convertToLatLng(location))
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(convertToLatLng(location)))
+        //test only
+            usersData.forEach{n ->
+                n.location = LatLng(n.location.latitude + 0.00011, n.location.longitude + 0.00011)}
+            updateNearUsersMarkers(usersData)
+        }
+        //TODO: add call for api for new ppl
+    }
+
+    fun updateNearUsersMarkers(newUsersData: List<UserData>) {
+        var farUsers = getFarUsers(newUsersData)
+        var oldUsers = getOldUsers(newUsersData)
+        var newUsers = getNewUsers(newUsersData)
+        farUsers.forEach { n -> n.marker?.remove()}
+        mActualUsers = oldUsers + newUsers
+        mActualUsers.forEach {n -> updateNearUserMarker(n)}
+    }
+
+    fun updateUserMarker(position: LatLng) {
+        if(mMarker == null)
+            mMarker = mMap.addMarker(MarkerOptions().position(position).title(getString(R.string.user_title)))
+        else
+            mMarker.position = position
+        mMarker.isDraggable = false
+    }
+
+    fun updateNearUserMarker(user: UserData) {
+        if(user.marker != null)
+            user.marker?.position = user?.location
+        else
+            user.marker = mMap.addMarker(MarkerOptions().position(user.location).title(user.title).snippet(user.descritprion))
+        user.marker?.isDraggable = false
+    }
+
+    fun getFarUsers(newUsers: List<UserData>) : List<UserData> {
+        var farUsers : List<UserData> = emptyList()
+        mActualUsers.forEach {
+            n ->
+            var exists = false
+            newUsers.forEach {k -> if(n.id == k.id)exists = true}
+            if(!exists)
+                farUsers += n
+        }
+        return farUsers
+    }
+
+    fun getOldUsers(newUsers: List<UserData>) : List<UserData> {
+        var oldUsers : List<UserData> = emptyList()
+        newUsers.forEach {
+                n ->
+            var exists = false
+            mActualUsers.forEach {k -> if(n.id == k.id)exists = true}
+            if(exists)
+                oldUsers += n
+        }
+        return oldUsers
+    }
+
+    fun getNewUsers(newUsers: List<UserData>) : List<UserData> {
+        var new: List<UserData> = emptyList()
+        newUsers.forEach { n ->
+            var exists = false
+            mActualUsers.forEach { k -> if (n.id == k.id) exists = true }
+            if (!exists)
+                new += n
+        }
+        return newUsers
+    }
+
+    fun convertToLatLng(location : Location?) : LatLng
+    {
+        return LatLng(location!!.latitude, location!!.longitude)
+    }
+
+    fun arePermissionsGranted(): Boolean {
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+            && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+            return true
+        return false
+    }
+
+    fun requestPermissions() {
         ActivityCompat.requestPermissions(this, permissions, permissionRequestCode)
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<out String>,
-        grantResults: IntArray
-    ) {
-        println("onRequestPermissionsResult")
-        var grantedAll = true
-        when (requestCode) {
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        var grantedAll : Boolean = true
+        when(requestCode) {
             permissionRequestCode -> {
-                permissions.forEach { _ ->
+                permissions.forEach { i ->
+                    var result = 0
                     if (grantResults.isNotEmpty()) {
                         for (item in grantResults) {
-                            if (item == PackageManager.PERMISSION_DENIED) {
+                            if(item == PackageManager.PERMISSION_DENIED)
                                 grantedAll = false
-                            }
                         }
                     }
                 }
             }
             else -> grantedAll = false
         }
-        if (grantedAll) {
-            startLocationUpdates()
-        } else {
+        if(grantedAll)
+            startUserPositionBackgroundService()
+        else
             finish()
-        }
     }
 
-
+    private inner class LocationReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val location : Location = intent.getParcelableExtra(ForegroundLocationService.EXTRA_LOCATION)
+            if (location != null) {
+                /*Toast.makeText(applicationContext, location.latitude.toString() + " " + location.longitude.toString(),
+                    Toast.LENGTH_SHORT
+                ).show()*/
+                updateMapPosition(location)
+            }
+        }
+    }
 }
