@@ -234,8 +234,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
             override fun onResponse(call: Call<List<Position>>, response: Response<List<Position>>) {
                 handleFarUsers(response.body()!!)
-            //    handleOldUsers(response.body()!!)
-            //    handleNewUsers(response.body()!!)
+                handleOldUsers(response.body()!!)
+                handleNewUsers(response.body()!!)
             }
         })
     }
@@ -276,7 +276,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             mActualUsers.forEach { k ->
                 if (n.userId == k.id) exists = true
             }
-            if (!exists) {
+            if (!exists && n.userId != getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).getString(
+                    ProfileActivity.USER_ID, "")!!) {
                 var user = UserData(n)
                 mActualUsers += user
                 val call = UserService.service.getUser(n.userId)
