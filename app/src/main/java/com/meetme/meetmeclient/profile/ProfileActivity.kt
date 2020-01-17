@@ -22,6 +22,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.meetme.meetmeclient.MapsActivity
 import com.meetme.meetmeclient.R
 import com.meetme.meetmeclient.profile.UserService.Companion.service
+import kotlinx.android.synthetic.main.activity_profile.*
 import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
@@ -115,11 +116,10 @@ class ProfileActivity : AppCompatActivity() {
                     val userResponse = response.body()!!
 
                     Log.i("t", "$userResponse")
-                    val (usernameField, descriptionField, genderField) = getUserForm()
 
-                    usernameField.setText(userResponse.userName)
-                    descriptionField.setText(userResponse.userDescription)
-                    genderField.setText(userResponse.gender)
+                    usernameEditText.setText(userResponse.userName)
+                    descriptionEditText.setText(userResponse.userDescription)
+                    genderEditText.setText(userResponse.gender)
 
                 } else {
                     Toast.makeText(
@@ -135,7 +135,7 @@ class ProfileActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.profile_activity)
+        setContentView(R.layout.activity_profile)
 
         imageView = findViewById(R.id.profile)
         imageView?.setOnClickListener { selectImage() }
@@ -213,12 +213,11 @@ class ProfileActivity : AppCompatActivity() {
     fun saveHandler(view: View) {
         setEditMode(false)
 
-        val (usernameField, descriptionField, genderField) = getUserForm()
         val user = User(
             null,
-            usernameField.text.toString(),
-            descriptionField.text.toString(),
-            genderField.text.toString()
+            usernameEditText.text.toString(),
+            descriptionEditText.text.toString(),
+            genderEditText.text.toString()
         )
         if (isValid(user, view)) {
             saveUser(user)
@@ -245,24 +244,14 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun setEditMode(editMode: Boolean) {
-        val (usernameField, descriptionField, genderField) = getUserForm()
-        val saveButton = findViewById<Button>(R.id.save)
-        val cancelButton = findViewById<Button>(R.id.cancel)
-
-        setFieldEditable(usernameField, editMode)
-        setFieldEditable(descriptionField, editMode)
-        setFieldEditable(genderField, editMode)
+        setFieldEditable(usernameEditText, editMode)
+        setFieldEditable(descriptionEditText, editMode)
+        setFieldEditable(genderEditText, editMode)
         setButtonVisible(saveButton, editMode)
         setButtonVisible(cancelButton, editMode)
 
     }
 
-    private fun getUserForm(): Triple<EditText, EditText, EditText> {
-        val usernameField = findViewById<EditText>(R.id.username)
-        val descriptionField = findViewById<EditText>(R.id.description)
-        val genderField = findViewById<EditText>(R.id.gender)
-        return Triple(usernameField, descriptionField, genderField)
-    }
 
     private fun setFieldEditable(field: EditText, editable: Boolean) {
         field.isFocusable = editable

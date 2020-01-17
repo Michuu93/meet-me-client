@@ -1,8 +1,7 @@
 package com.meetme.meetmeclient.profile
 
+import com.meetme.meetmeclient.RetrofitInstance.Companion.retrofit
 import retrofit2.Call
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.*
 
 
@@ -20,11 +19,6 @@ interface UserService {
     ): Call<User>
 
     companion object {
-        var baseUrl = "http://192.168.8.102:8080/"
-        val retrofit: Retrofit = Retrofit.Builder()
-            .baseUrl(baseUrl)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
         val service: UserService = retrofit.create(UserService::class.java)
     }
 }

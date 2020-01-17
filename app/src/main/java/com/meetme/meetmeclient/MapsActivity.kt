@@ -4,41 +4,38 @@ import android.Manifest
 import android.content.*
 import android.content.pm.PackageManager
 import android.location.Location
+import android.os.AsyncTask
 import android.os.Bundle
 import android.os.IBinder
 import android.util.Log
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
 import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import com.google.android.gms.maps.*
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
-import android.graphics.Bitmap
-import android.R.layout
-import android.app.Activity
-import android.util.DisplayMetrics
-import android.R.attr.name
-import android.widget.TextView
-import de.hdodenhof.circleimageview.CircleImageView
-import android.content.Context.LAYOUT_INFLATER_SERVICE
-import android.graphics.Canvas
-import androidx.core.content.ContextCompat.getSystemService
-import androidx.annotation.DrawableRes
-import androidx.core.app.ComponentActivity
-import androidx.core.app.ComponentActivity.ExtraData
-import android.icu.lang.UCharacter.GraphemeClusterBreak.T
-import android.view.*
+import com.google.android.gms.maps.model.MarkerOptions
 import com.meetme.meetmeclient.profile.ProfileActivity
+import com.meetme.meetmeclient.profile.User
+import com.meetme.meetmeclient.profile.UserService
+import retrofit2.Call
+import retrofit2.Callback
+import retrofit2.Response
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     //variables for location service
     private lateinit var mReceiver: LocationReceiver
-    private var mService : ForegroundLocationService? = null
+    private var mService: ForegroundLocationService? = null
     private var mBound = false
 
     private lateinit var mMap: GoogleMap
@@ -52,9 +49,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     )
 
     //for test only
-    private var usersData = listOf(UserData(1, LatLng(52.433072, 16.917327), "u1", "u1"),
+    private var usersData = listOf(
+        UserData(1, LatLng(52.433072, 16.917327), "u1", "u1"),
         UserData(2, LatLng(52.433680, 16.918340), "u2", "u2"),
-        UserData(3, LatLng(52.434386, 16.917310), "u3", "u3"))
+        UserData(3, LatLng(52.434386, 16.917310), "u3", "u3")
+    )
 
     private val mServiceConnection = object : ServiceConnection {
 
@@ -78,7 +77,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         setContentView(R.layout.activity_maps)
         mReceiver = LocationReceiver()
 
-        if(arePermissionsGranted())
+        if (arePermissionsGranted())
             permissionsGranted = true
         else
             requestPermissions()
@@ -91,7 +90,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     override fun onStart() {
         super.onStart()
-        if(permissionsGranted)
+        if (permissionsGranted)
             startUserPositionBackgroundService()
     }
 
@@ -148,6 +147,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         )
     }
 
+
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
 
@@ -155,13 +155,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         val sydney = LatLng(52.401492, 16.925011)
         mMap.setMinZoomPreference(15f)
         mMap.uiSettings.isScrollGesturesEnabled = false
-        mMarker = mMap.addMarker(MarkerOptions().position(sydney).title(getString(R.string.user_title)))
+        mMarker =
+            mMap.addMarker(MarkerOptions().position(sydney).title(getString(R.string.user_title)))
         mMap.uiSettings.isTiltGesturesEnabled = false
+
+        mMap.setInfoWindowAdapter(ProfileInfoAdapter(this))
+
         mMap.setOnMarkerClickListener { marker ->
             if (marker.isInfoWindowShown) {
                 marker.hideInfoWindow()
             } else {
-                marker.showInfoWindow()
+               loadUserData(marker)
             }
             true
         }
@@ -169,14 +173,47 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mMap.moveCamera(CameraUpdateFactory.newLatLng(mMarker.position))
     }
 
-    fun updateMapPosition(location: Location?)
-    {
-        if(mMap != null) {
+    private fun loadUserData(marker: Marker) {
+        //TODO przekazanie userId ze znacznika
+        val call = UserService.service.getUser("09b3fdd5-2504-45be-9174-c3f850b92773")
+
+        call.enqueue(object : Callback<User> {
+            override fun onFailure(call: Call<User>, t: Throwable) {
+                Log.e("error", "Received an exception $t")
+                showErrorToast()
+
+            }
+
+            override fun onResponse(call: Call<User>, response: Response<User>) {
+                if (response.code() == 200) {
+                    val user = response.body()!!
+                    marker.tag = user
+                    marker.showInfoWindow()
+                } else {
+                    showErrorToast()
+                }
+
+            }
+
+            private fun showErrorToast() {
+                Toast.makeText(
+                    this@MapsActivity, getString(R.string.server_error),
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+
+        })
+    }
+
+
+    fun updateMapPosition(location: Location?) {
+        if (mMap != null) {
             updateUserMarker(convertToLatLng(location))
             mMap.moveCamera(CameraUpdateFactory.newLatLng(convertToLatLng(location)))
-        //test only
-            usersData.forEach{n ->
-                n.location = LatLng(n.location.latitude + 0.00011, n.location.longitude + 0.00011)}
+            //test only
+            usersData.forEach { n ->
+                n.location = LatLng(n.location.latitude + 0.00011, n.location.longitude + 0.00011)
+            }
             updateNearUsersMarkers(usersData)
         }
         //TODO: add call for api for new ppl
@@ -186,52 +223,53 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         var farUsers = getFarUsers(newUsersData)
         var oldUsers = getOldUsers(newUsersData)
         var newUsers = getNewUsers(newUsersData)
-        farUsers.forEach { n -> n.marker?.remove()}
+        farUsers.forEach { n -> n.marker?.remove() }
         mActualUsers = oldUsers + newUsers
-        mActualUsers.forEach {n -> updateNearUserMarker(n)}
+        mActualUsers.forEach { n -> updateNearUserMarker(n) }
     }
 
     fun updateUserMarker(position: LatLng) {
-        if(mMarker == null)
-            mMarker = mMap.addMarker(MarkerOptions().position(position).title(getString(R.string.user_title)))
+        if (mMarker == null)
+            mMarker =
+                mMap.addMarker(MarkerOptions().position(position).title(getString(R.string.user_title)))
         else
             mMarker.position = position
         mMarker.isDraggable = false
     }
 
     fun updateNearUserMarker(user: UserData) {
-        if(user.marker != null)
+        if (user.marker != null)
             user.marker?.position = user?.location
         else
-            user.marker = mMap.addMarker(MarkerOptions().position(user.location).title(user.title).snippet(user.descritprion))
+            user.marker = mMap.addMarker(
+                MarkerOptions().position(user.location).title(user.title).snippet(user.descritprion)
+            )
         user.marker?.isDraggable = false
     }
 
-    fun getFarUsers(newUsers: List<UserData>) : List<UserData> {
-        var farUsers : List<UserData> = emptyList()
-        mActualUsers.forEach {
-            n ->
+    fun getFarUsers(newUsers: List<UserData>): List<UserData> {
+        var farUsers: List<UserData> = emptyList()
+        mActualUsers.forEach { n ->
             var exists = false
-            newUsers.forEach {k -> if(n.id == k.id)exists = true}
-            if(!exists)
+            newUsers.forEach { k -> if (n.id == k.id) exists = true }
+            if (!exists)
                 farUsers += n
         }
         return farUsers
     }
 
-    fun getOldUsers(newUsers: List<UserData>) : List<UserData> {
-        var oldUsers : List<UserData> = emptyList()
-        newUsers.forEach {
-                n ->
+    fun getOldUsers(newUsers: List<UserData>): List<UserData> {
+        var oldUsers: List<UserData> = emptyList()
+        newUsers.forEach { n ->
             var exists = false
-            mActualUsers.forEach {k -> if(n.id == k.id)exists = true}
-            if(exists)
+            mActualUsers.forEach { k -> if (n.id == k.id) exists = true }
+            if (exists)
                 oldUsers += n
         }
         return oldUsers
     }
 
-    fun getNewUsers(newUsers: List<UserData>) : List<UserData> {
+    fun getNewUsers(newUsers: List<UserData>): List<UserData> {
         var new: List<UserData> = emptyList()
         newUsers.forEach { n ->
             var exists = false
@@ -242,14 +280,20 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         return newUsers
     }
 
-    fun convertToLatLng(location : Location?) : LatLng
-    {
+    fun convertToLatLng(location: Location?): LatLng {
         return LatLng(location!!.latitude, location!!.longitude)
     }
 
     fun arePermissionsGranted(): Boolean {
-        if(ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-            && ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED)
+        if (ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            && ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        )
             return true
         return false
     }
@@ -258,15 +302,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         ActivityCompat.requestPermissions(this, permissions, permissionRequestCode)
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        var grantedAll : Boolean = true
-        when(requestCode) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        var grantedAll: Boolean = true
+        when (requestCode) {
             permissionRequestCode -> {
                 permissions.forEach { i ->
                     var result = 0
                     if (grantResults.isNotEmpty()) {
                         for (item in grantResults) {
-                            if(item == PackageManager.PERMISSION_DENIED)
+                            if (item == PackageManager.PERMISSION_DENIED)
                                 grantedAll = false
                         }
                     }
@@ -274,7 +322,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             }
             else -> grantedAll = false
         }
-        if(grantedAll)
+        if (grantedAll)
             startUserPositionBackgroundService()
         else
             finish()
@@ -282,7 +330,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private inner class LocationReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            val location : Location = intent.getParcelableExtra(ForegroundLocationService.EXTRA_LOCATION)
+            val location: Location =
+                intent.getParcelableExtra(ForegroundLocationService.EXTRA_LOCATION)
             if (location != null) {
                 /*Toast.makeText(applicationContext, location.latitude.toString() + " " + location.longitude.toString(),
                     Toast.LENGTH_SHORT

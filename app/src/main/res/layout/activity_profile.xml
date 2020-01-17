@@ -17,11 +17,10 @@
             android:layout_height="150dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:scaleType="centerCrop"
+            android:src="@drawable/navbar2"
+            app:srcCompat="@drawable/navbar2" />
 
-            android:src="@drawable/navbar"
-            app:srcCompat="@drawable/navbar" />
-
-        <de.hdodenhof.circleimageview.CircleImageView xmlns:app="http://schemas.android.com/apk/res-auto"
+        <de.hdodenhof.circleimageview.CircleImageView
 
             android:id="@+id/profile"
             android:layout_width="200dp"
@@ -43,7 +42,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@+id/profile_image"
-            android:background="#EBC5C5C5"
+            android:background="@color/colorLight"
             android:elevation="4dp"
             android:paddingBottom="24dp">
 
@@ -76,7 +75,7 @@
             android:paddingLeft="5dp"
             android:paddingTop="20dp"
             android:paddingRight="5dp"
-            android:paddingBottom="20dp"
+            android:paddingBottom="40dp"
 
             >
 
@@ -124,7 +123,7 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <EditText
-                android:id="@+id/username"
+                android:id="@+id/usernameEditText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_margin="5dp"
@@ -137,7 +136,7 @@
                 app:layout_constraintTop_toTopOf="parent" />
 
             <EditText
-                android:id="@+id/description"
+                android:id="@+id/descriptionEditText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_margin="5dp"
@@ -150,7 +149,7 @@
                 app:layout_constraintTop_toBottomOf="@+id/textView5" />
 
             <EditText
-                android:id="@+id/gender"
+                android:id="@+id/genderEditText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_margin="5dp"
@@ -163,8 +162,8 @@
                 app:layout_constraintTop_toBottomOf="@+id/textView10" />
 
 
-            <Button
-                android:id="@+id/cancel"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/cancelButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_margin="20dp"
@@ -176,8 +175,8 @@
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView7" />
 
-            <Button
-                android:id="@+id/save"
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/saveButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_margin="10dp"
@@ -186,8 +185,8 @@
                 android:onClick="saveHandler"
                 android:text="@string/save"
                 android:visibility="invisible"
-                app:layout_constraintLeft_toRightOf="@id/cancel"
-                app:layout_constraintTop_toBottomOf="@+id/description" />
+                app:layout_constraintLeft_toRightOf="@id/cancelButton"
+                app:layout_constraintTop_toBottomOf="@+id/descriptionEditText" />
 
 
         </androidx.constraintlayout.widget.ConstraintLayout>
