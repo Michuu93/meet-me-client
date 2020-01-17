@@ -18,6 +18,11 @@ interface PositionService {
     @POST("position")
     fun savePosition(@Body position: Position): Call<Void>
 
+    @GET("/position/active/{positionTimestamp}")
+    fun getNearUser(
+        @Path("positionTimestamp") positionTimestamp: Double
+    ): Call<List<Position>>
+
     companion object {
         val service: PositionService = retrofit.create(PositionService::class.java)
     }

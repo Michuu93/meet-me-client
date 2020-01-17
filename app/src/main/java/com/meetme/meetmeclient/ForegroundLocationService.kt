@@ -226,6 +226,7 @@ class ForegroundLocationService : Service() {
             }
 
             override fun onResponse(call: Call<Void>, response: Response<Void>) {
+
                 // do nothing
             }
         })

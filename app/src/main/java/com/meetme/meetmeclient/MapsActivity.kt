@@ -33,6 +33,7 @@ import java.io.BufferedReader
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStreamReader
+import java.util.*
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -51,14 +52,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION
     )
-
-    //for test only
-    private var usersData = listOf(
-        UserData(1, LatLng(52.433072, 16.917327), "u1", "u1"),
-        UserData(2, LatLng(52.433680, 16.918340), "u2", "u2"),
-        UserData(3, LatLng(52.434386, 16.917310), "u3", "u3")
-    )
-
     private val mServiceConnection = object : ServiceConnection {
 
         override fun onServiceConnected(name: ComponentName, service: IBinder) {
@@ -182,12 +175,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mMap.uiSettings.isTiltGesturesEnabled = false
 
         mMap.setInfoWindowAdapter(ProfileInfoAdapter(this))
-
+        loadUserData()
         mMap.setOnMarkerClickListener { marker ->
             if (marker.isInfoWindowShown) {
                 marker.hideInfoWindow()
             } else {
-                loadUserData(marker)
+                marker.showInfoWindow()
             }
             true
         }
@@ -195,8 +188,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mMap.moveCamera(CameraUpdateFactory.newLatLng(mMarker.position))
     }
 
-    private fun loadUserData(marker: Marker) {
-        //TODO przekazanie userId ze znacznika
+    private fun loadUserData() {
         val call = UserService.service.getUser(getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).getString(
             ProfileActivity.USER_ID, "")!!)
 
@@ -209,8 +201,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
             override fun onResponse(call: Call<User>, response: Response<User>) {
                 if (response.code() == 200) {
                     val user = response.body()!!
-                    marker.tag = user
-                    marker.showInfoWindow()
+                    mMarker.tag = user
                 } else {
                     showErrorToast()
                 }
@@ -229,22 +220,24 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         if (mMap != null) {
             updateUserMarker(convertToLatLng(location))
             mMap.moveCamera(CameraUpdateFactory.newLatLng(convertToLatLng(location)))
-            //test only
-            usersData.forEach { n ->
-                n.location = LatLng(n.location.latitude + 0.00011, n.location.longitude + 0.00011)
-            }
-            updateNearUsersMarkers(usersData)
         }
-        //TODO: add call for api for new ppl
+        getAllUsersFromServer()
     }
 
-    private fun updateNearUsersMarkers(newUsersData: List<UserData>) {
-        val farUsers = getFarUsers(newUsersData)
-        val oldUsers = getOldUsers(newUsersData)
-        val newUsers = getNewUsers(newUsersData)
-        farUsers.forEach { n -> n.marker?.remove() }
-        mActualUsers = oldUsers + newUsers
-        mActualUsers.forEach { n -> updateNearUserMarker(n) }
+    private fun getAllUsersFromServer() {
+
+        val call = PositionService.service.getNearUser((Date().time - 30).toDouble())
+        call.enqueue(object : Callback<List<Position>> {
+            override fun onFailure(call: Call<List<Position>>, t: Throwable) {
+                Log.e("error", "Received an exception $t")
+            }
+
+            override fun onResponse(call: Call<List<Position>>, response: Response<List<Position>>) {
+                handleFarUsers(response.body()!!)
+            //    handleOldUsers(response.body()!!)
+            //    handleNewUsers(response.body()!!)
+            }
+        })
     }
 
     private fun updateUserMarker(position: LatLng) {
@@ -257,50 +250,56 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mMarker.isDraggable = false
     }
 
-    private fun updateNearUserMarker(user: UserData) {
-        if (user.marker != null)
-            user.marker?.position = user.location
-        else
-            user.marker = mMap.addMarker(
-                MarkerOptions().position(user.location).title(user.title).snippet(user.description)
-            )
-        user.marker?.isDraggable = false
-    }
-
-    private fun getFarUsers(newUsers: List<UserData>): List<UserData> {
-        var farUsers: List<UserData> = emptyList()
+    private fun handleFarUsers(newUsers: List<Position>) {
         mActualUsers.forEach { n ->
             var exists = false
-            newUsers.forEach { k -> if (n.id == k.id) exists = true }
-            if (!exists) {
-                farUsers = farUsers + n
+            newUsers.forEach { k -> if (n.id == k.userId) exists = true }
+            if(!exists){
+                n.marker?.remove()
+                mActualUsers -= n
             }
         }
-        return farUsers
     }
 
-    private fun getOldUsers(newUsers: List<UserData>): List<UserData> {
-        var oldUsers: List<UserData> = emptyList()
+    private fun handleOldUsers(newUsers: List<Position>) {
         newUsers.forEach { n ->
-            var exists = false
-            mActualUsers.forEach { k -> if (n.id == k.id) exists = true }
-            if (exists) {
-                oldUsers = oldUsers + n
-            }
+            mActualUsers.forEach { k -> if (n.userId == k.id) {
+                k.location = LatLng(n.latitude!!, n.longitude!!)
+                k.marker?.position = k.location
+            } }
         }
-        return oldUsers
     }
 
-    private fun getNewUsers(newUsers: List<UserData>): List<UserData> {
-        var new: List<UserData> = emptyList()
+    private fun handleNewUsers(newUsers: List<Position>){
         newUsers.forEach { n ->
             var exists = false
-            mActualUsers.forEach { k -> if (n.id == k.id) exists = true }
+            mActualUsers.forEach { k ->
+                if (n.userId == k.id) exists = true
+            }
             if (!exists) {
-                new = new + n
+                var user = UserData(n)
+                mActualUsers += user
+                val call = UserService.service.getUser(n.userId)
+
+                call.enqueue(object : Callback<User> {
+                    override fun onFailure(call: Call<User>, t: Throwable) {
+                        Log.e("error", "Received an exception $t")
+                    }
+
+                    override fun onResponse(call: Call<User>, response: Response<User>) {
+                        if (response.code() == 200) {
+                            val resultUser = response.body()!!
+                            mActualUsers.forEach { n ->
+                                if(n.id == resultUser.userId) {
+                                    var marker : Marker? = mMap.addMarker(MarkerOptions().position(n.location))
+                                    marker?.tag = user
+                                }
+                            }
+                        }
+                    }
+                })
             }
         }
-        return newUsers
     }
 
     private fun convertToLatLng(location: Location?): LatLng {
