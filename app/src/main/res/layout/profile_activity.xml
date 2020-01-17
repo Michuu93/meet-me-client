@@ -87,11 +87,11 @@
                 android:layout_margin="20dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
+                android:background="@android:color/transparent"
                 android:clickable="true"
                 android:focusable="true"
                 android:text="@string/gender"
                 android:textStyle="bold"
-                android:background="@android:color/transparent"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/textView10" />
 
@@ -170,11 +170,11 @@
                 android:layout_margin="20dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
+                android:onClick="cancelHandler"
                 android:text="@string/cancel"
                 android:visibility="invisible"
                 app:layout_constraintLeft_toLeftOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/textView7"
-                android:onClick="cancelHandler"/>
+                app:layout_constraintTop_toBottomOf="@+id/textView7" />
 
             <Button
                 android:id="@+id/save"
@@ -183,11 +183,11 @@
                 android:layout_margin="10dp"
                 android:layout_marginStart="8dp"
                 android:layout_marginTop="8dp"
+                android:onClick="saveHandler"
                 android:text="@string/save"
                 android:visibility="invisible"
                 app:layout_constraintLeft_toRightOf="@id/cancel"
-                app:layout_constraintTop_toBottomOf="@+id/description"
-                android:onClick="saveHandler"/>
+                app:layout_constraintTop_toBottomOf="@+id/description" />
 
 
         </androidx.constraintlayout.widget.ConstraintLayout>

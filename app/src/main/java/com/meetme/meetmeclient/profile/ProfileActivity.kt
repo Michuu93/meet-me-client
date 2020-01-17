@@ -18,6 +18,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
+import com.google.android.material.snackbar.Snackbar
 import com.meetme.meetmeclient.MapsActivity
 import com.meetme.meetmeclient.R
 import com.meetme.meetmeclient.profile.UserService.Companion.service
@@ -25,10 +26,7 @@ import org.json.JSONObject
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
-import java.io.BufferedReader
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.InputStreamReader
+import java.io.*
 
 
 class ProfileActivity : AppCompatActivity() {
@@ -36,7 +34,7 @@ class ProfileActivity : AppCompatActivity() {
     companion object {
         const val REQUEST_CAMERA = 100
         const val USERNAME = "username"
-        const val USER = "user"
+        const val USER = "user.txt"
         const val DESCRIPTION = "description"
         const val GENDER = "gender"
 
@@ -45,9 +43,7 @@ class ProfileActivity : AppCompatActivity() {
 
     private var imageView: ImageView? = null
 
-    private fun saveUser(
-        user: User
-    ) {
+    private fun saveUser(user: User) {
 
         val json = JSONObject()
         json.put(USERNAME, user.userName)
@@ -55,8 +51,6 @@ class ProfileActivity : AppCompatActivity() {
         json.put(GENDER, user.gender)
 
         val call = service.save(user)
-        //       Snackbar.make(view, "Please enter the password", Snackbar.LENGTH_SHORT).show()
-
 
         call.enqueue(object : Callback<User> {
             override fun onFailure(call: Call<User>, t: Throwable) {
@@ -105,8 +99,8 @@ class ProfileActivity : AppCompatActivity() {
         return stringBuilder.toString()
     }
 
-    private fun getUser() {
-        val call = service.getUser("11")
+    private fun getUser(userId: String) {
+        val call = service.getUser(userId)
         call.enqueue(object : Callback<User> {
             override fun onFailure(call: Call<User>, t: Throwable) {
                 Log.e("error", "Received an exception $t")
@@ -127,11 +121,12 @@ class ProfileActivity : AppCompatActivity() {
                     descriptionField.setText(userResponse.userDescription)
                     genderField.setText(userResponse.gender)
 
-                } else if (response.code() == 404) {
+                } else {
                     Toast.makeText(
                         this@ProfileActivity, getString(R.string.update_profile),
                         Toast.LENGTH_LONG
                     ).show()
+                    setEditMode(true)
                 }
             }
 
@@ -145,8 +140,17 @@ class ProfileActivity : AppCompatActivity() {
         imageView = findViewById(R.id.profile)
         imageView?.setOnClickListener { selectImage() }
 
-        getUser()
+        prepareUserFile()
+        val userId = readUserId()
+        getUser(userId)
 
+    }
+
+    private fun prepareUserFile() {
+        val file = File(getBaseContext().getFilesDir(), USER)
+        if (!file.exists()) {
+            file.createNewFile()
+        }
     }
 
     private fun selectImage() {
@@ -206,7 +210,7 @@ class ProfileActivity : AppCompatActivity() {
         setEditMode(false)
     }
 
-    fun saveHandler(v: View) {
+    fun saveHandler(view: View) {
         setEditMode(false)
 
         val (usernameField, descriptionField, genderField) = getUserForm()
@@ -216,7 +220,28 @@ class ProfileActivity : AppCompatActivity() {
             descriptionField.text.toString(),
             genderField.text.toString()
         )
-        saveUser(user)
+        if (isValid(user, view)) {
+            saveUser(user)
+        }
+    }
+
+    private fun isValid(user: User, view: View): Boolean {
+        if (user.userName.isEmpty()) {
+            Snackbar.make(view, getString(R.string.username_validation), Snackbar.LENGTH_SHORT)
+                .show()
+            return false
+        }
+        if (user.userDescription?.isEmpty()!!) {
+            Snackbar.make(view, getString(R.string.description_validation), Snackbar.LENGTH_SHORT)
+                .show()
+            return false
+        }
+        if (user.gender?.isEmpty()!!) {
+            Snackbar.make(view, getString(R.string.gender_validation), Snackbar.LENGTH_SHORT).show()
+            return false
+        }
+
+        return true
     }
 
     private fun setEditMode(editMode: Boolean) {

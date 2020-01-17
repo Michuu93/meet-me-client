@@ -13,4 +13,7 @@
     <string name="update_profile">Update your profile</string>
     <string name="choose_photo">Choose from gallery</string>
     <string name="user_title">Title</string>
+    <string name="username_validation">Please enter the username</string>
+    <string name="description_validation">Please enter the description</string>
+    <string name="gender_validation">Please enter the gender</string>
 </resources>
