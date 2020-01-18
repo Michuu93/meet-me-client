@@ -6,7 +6,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.os.IBinder
-import android.preference.PreferenceManager
+import android.os.StrictMode
 import android.util.Log
 import android.view.Menu
 import android.view.MenuInflater
@@ -24,16 +24,11 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.meetme.meetmeclient.profile.ProfileActivity
-import com.meetme.meetmeclient.profile.User
 import com.meetme.meetmeclient.profile.UserService
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 import java.io.BufferedReader
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStreamReader
-import java.util.*
 
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
@@ -70,6 +65,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
+        StrictMode.setThreadPolicy(policy)
+
         setContentView(R.layout.activity_maps)
         prepareUserFile()
         mReceiver = LocationReceiver()
@@ -101,7 +99,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         while ({ text = bufferedReader.readLine(); text }() != null) {
             stringBuilder.append(text)
         }
-        getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).edit().putString(ProfileActivity.USER_ID, stringBuilder.toString()).commit()
+        getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).edit()
+            .putString(ProfileActivity.USER_ID, stringBuilder.toString()).commit()
     }
 
 
@@ -189,31 +188,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun loadUserData() {
-        val call = UserService.service.getUser(getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).getString(
-            ProfileActivity.USER_ID, "")!!)
+        val userMono = UserService.service.getUser(
+            getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).getString(
+                ProfileActivity.USER_ID, ""
+            )!!
+        )
 
-        call.enqueue(object : Callback<User> {
-            override fun onFailure(call: Call<User>, t: Throwable) {
-                Log.e("error", "Received an exception $t")
-                showErrorToast()
-            }
-
-            override fun onResponse(call: Call<User>, response: Response<User>) {
-                if (response.code() == 200) {
-                    val user = response.body()!!
-                    mMarker.tag = user
-                } else {
-                    showErrorToast()
-                }
-            }
-
-            private fun showErrorToast() {
-                Toast.makeText(
-                    this@MapsActivity, getString(R.string.server_error),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        })
+        userMono.doOnNext {
+            mMarker.tag = it
+        }.doOnError {
+            Log.e("error", "Received an exception $it")
+            Toast.makeText(
+                this@MapsActivity, getString(R.string.server_error),
+                Toast.LENGTH_LONG
+            ).show()
+        }.subscribe()
     }
 
     fun updateMapPosition(location: Location?) {
@@ -225,19 +214,19 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     private fun getAllUsersFromServer() {
-
-        val call = PositionService.service.getNearUser((Date().time - 30).toDouble())
-        call.enqueue(object : Callback<List<Position>> {
-            override fun onFailure(call: Call<List<Position>>, t: Throwable) {
-                Log.e("error", "Received an exception $t")
-            }
-
-            override fun onResponse(call: Call<List<Position>>, response: Response<List<Position>>) {
-                handleFarUsers(response.body()!!)
-                handleOldUsers(response.body()!!)
-                handleNewUsers(response.body()!!)
-            }
-        })
+        val positionsFlux = PositionService.service.gelAllNearUsers()
+//        val userPositions = positionsFlux.block()
+//        userPositions?.let {
+//            Log.e("error", "getAllUsersFromServer [response=${it}]")
+//        }
+        positionsFlux.doOnNext {
+            Log.e("error", "getAllUsersFromServer [response=${it}]")
+            handleFarUsers(it)
+            handleOldUsers(it)
+            handleNewUsers(it)
+        }.doOnError {
+            Log.e("error", "Received an exception $it")
+        }.subscribe()
     }
 
     private fun updateUserMarker(position: LatLng) {
@@ -254,7 +243,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
         mActualUsers.forEach { n ->
             var exists = false
             newUsers.forEach { k -> if (n.id == k.userId) exists = true }
-            if(!exists){
+            if (!exists) {
                 n.marker?.remove()
                 mActualUsers -= n
             }
@@ -263,42 +252,43 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private fun handleOldUsers(newUsers: List<Position>) {
         newUsers.forEach { n ->
-            mActualUsers.forEach { k -> if (n.userId == k.id) {
-                k.location = LatLng(n.latitude!!, n.longitude!!)
-                k.marker?.position = k.location
-            } }
+            mActualUsers.forEach { k ->
+                if (n.userId == k.id) {
+                    k.location = LatLng(n.latitude, n.longitude)
+                    k.marker?.position = k.location
+                }
+            }
         }
     }
 
-    private fun handleNewUsers(newUsers: List<Position>){
+    private fun handleNewUsers(newUsers: List<Position>) {
         newUsers.forEach { n ->
             var exists = false
             mActualUsers.forEach { k ->
                 if (n.userId == k.id) exists = true
             }
-            if (!exists && n.userId != getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).getString(
-                    ProfileActivity.USER_ID, "")!!) {
-                var user = UserData(n)
+            if (!exists && n.userId != getSharedPreferences(
+                    ProfileActivity.SHARED,
+                    Context.MODE_PRIVATE
+                ).getString(
+                    ProfileActivity.USER_ID, ""
+                )!!
+            ) {
+                val user = UserData(n)
                 mActualUsers += user
-                val call = UserService.service.getUser(n.userId)
+                val userMono = UserService.service.getUser(n.userId)
 
-                call.enqueue(object : Callback<User> {
-                    override fun onFailure(call: Call<User>, t: Throwable) {
-                        Log.e("error", "Received an exception $t")
-                    }
-
-                    override fun onResponse(call: Call<User>, response: Response<User>) {
-                        if (response.code() == 200) {
-                            val resultUser = response.body()!!
-                            mActualUsers.forEach { n ->
-                                if(n.id == resultUser.userId) {
-                                    var marker : Marker? = mMap.addMarker(MarkerOptions().position(n.location))
-                                    marker?.tag = user
-                                }
-                            }
+                userMono.doOnNext {
+                    mActualUsers.forEach { n ->
+                        if (n.id == it.userId) {
+                            val marker: Marker? =
+                                mMap.addMarker(MarkerOptions().position(n.location))
+                            marker?.tag = it
                         }
                     }
-                })
+                }.doOnError {
+                    Log.e("error", "Received an exception $it")
+                }.subscribe()
             }
         }
     }

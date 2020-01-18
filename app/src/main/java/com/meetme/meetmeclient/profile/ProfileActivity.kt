@@ -5,7 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
-import android.preference.PreferenceManager
+import android.os.StrictMode
 import android.provider.MediaStore
 import android.util.Log
 import android.view.Menu
@@ -25,10 +25,7 @@ import com.meetme.meetmeclient.R
 import com.meetme.meetmeclient.profile.UserService.Companion.service
 import kotlinx.android.synthetic.main.activity_profile.*
 import org.json.JSONObject
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
-import java.io.*
+import java.io.FileOutputStream
 
 
 class ProfileActivity : AppCompatActivity() {
@@ -51,41 +48,28 @@ class ProfileActivity : AppCompatActivity() {
         json.put(DESCRIPTION, user.userDescription)
         json.put(GENDER, user.gender)
 
-        val call = service.save(user)
+        val userMono = service.save(user)
 
-        call.enqueue(object : Callback<User> {
-            override fun onFailure(call: Call<User>, t: Throwable) {
-                Log.e("error", "Received an exception $t")
-                setEditMode(false)
-                Toast.makeText(
-                    this@ProfileActivity, getString(R.string.server_error),
-                    Toast.LENGTH_LONG
-                ).show()
-
+        userMono.doOnNext {
+            setEditMode(false)
+            val file: String = USER
+            val fileOutputStream: FileOutputStream
+            try {
+                fileOutputStream = openFileOutput(file, Context.MODE_PRIVATE)
+                fileOutputStream.write(it.userId?.toByteArray()!!)
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-
-            override fun onResponse(call: Call<User>, response: Response<User>) {
-                setEditMode(false)
-                if (response.code() == 200) {
-                    val userResponse = response.body()!!
-                    saveUserId(userResponse.userId)
-                    getSharedPreferences(SHARED, Context.MODE_PRIVATE).edit().putString(ProfileActivity.USER_ID, userResponse.userId).commit()
-                }
-
-            }
-
-            private fun saveUserId(userId: String?) {
-                val file: String = USER
-                val fileOutputStream: FileOutputStream
-                try {
-                    fileOutputStream = openFileOutput(file, Context.MODE_PRIVATE)
-                    fileOutputStream.write(userId?.toByteArray())
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-            }
-
-        })
+            getSharedPreferences(SHARED, Context.MODE_PRIVATE).edit()
+                .putString(USER_ID, it.userId).apply()
+        }.doOnError {
+            Log.e("error", "Received an exception ${it.stackTrace}")
+            setEditMode(false)
+            Toast.makeText(
+                this@ProfileActivity, getString(R.string.server_error),
+                Toast.LENGTH_LONG
+            ).show()
+        }.subscribe()
     }
 
     private fun readUserId(): String {
@@ -93,40 +77,27 @@ class ProfileActivity : AppCompatActivity() {
     }
 
     private fun getUser(userId: String) {
-        val call = service.getUser(userId)
-        call.enqueue(object : Callback<User> {
-            override fun onFailure(call: Call<User>, t: Throwable) {
-                Log.e("error", "Received an exception $t")
-                Toast.makeText(
-                    this@ProfileActivity, getString(R.string.server_error),
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-
-            override fun onResponse(call: Call<User>, response: Response<User>) {
-                if (response.code() == 200) {
-                    val userResponse = response.body()!!
-
-                    Log.i("t", "$userResponse")
-
-                    usernameEditText.setText(userResponse.userName)
-                    descriptionEditText.setText(userResponse.userDescription)
-                    genderEditText.setText(userResponse.gender)
-
-                } else {
-                    Toast.makeText(
-                        this@ProfileActivity, getString(R.string.update_profile),
-                        Toast.LENGTH_LONG
-                    ).show()
-                    setEditMode(true)
-                }
-            }
-        })
+        val userMono = service.getUser(userId)
+        userMono.doOnNext {
+            Log.i("t", "$it")
+            usernameEditText.setText(it.userName)
+            descriptionEditText.setText(it.userDescription)
+            genderEditText.setText(it.gender)
+        }.doOnError {
+            Log.e("error", "Received an exception $it")
+            Toast.makeText(
+                this@ProfileActivity, getString(R.string.server_error),
+                Toast.LENGTH_LONG
+            ).show()
+        }.subscribe()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profile)
+
+        val policy = StrictMode.ThreadPolicy.Builder().permitAll().build()
+        StrictMode.setThreadPolicy(policy)
 
         imageView = findViewById(R.id.profile)
         imageView?.setOnClickListener { selectImage() }
@@ -184,7 +155,7 @@ class ProfileActivity : AppCompatActivity() {
         return true
     }
 
-    fun editHandler() {
+    fun editHandler(v: View) {
         setEditMode(true)
     }
 

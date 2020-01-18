@@ -207,29 +207,33 @@ class ForegroundLocationService : Service() {
     }
 
     private fun sendUserPosition() {
-        println("Location is longitude = ${mLocation!!.longitude} latitude = ${mLocation!!.latitude}")
+        val userId = getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).getString(
+            ProfileActivity.USER_ID,
+            ""
+        )!!
 
-        val newPosition = Position(
-            userId = getSharedPreferences(ProfileActivity.SHARED, Context.MODE_PRIVATE).getString(
-                ProfileActivity.USER_ID, "")!!,
-            latitude = mLocation!!.latitude,
-            longitude = mLocation!!.longitude,
-            positionTimestamp = Date().time.toDouble()
-        )
+        if (userId.isNotBlank()) {
+            println("Location is longitude = ${mLocation!!.longitude} latitude = ${mLocation!!.latitude}")
+            val newPosition = Position(
+                userId = userId,
+                latitude = mLocation!!.latitude,
+                longitude = mLocation!!.longitude,
+                positionTimestamp = Date().time.toDouble()
+            )
 
-        println("Sending user position to server, position=$newPosition)")
+            println("Sending user position to server, position=$newPosition)")
 
-        val call = PositionService.service.savePosition(newPosition)
-        call.enqueue(object : Callback<Void> {
-            override fun onFailure(call: Call<Void>, t: Throwable) {
-                Log.e("error", "Received an exception $t")
-            }
+            val call = PositionService.service.savePosition(newPosition)
+            call.enqueue(object : Callback<Void> {
+                override fun onFailure(call: Call<Void>, t: Throwable) {
+                    Log.e("error", "Received an exception $t")
+                }
 
-            override fun onResponse(call: Call<Void>, response: Response<Void>) {
-
-                // do nothing
-            }
-        })
+                override fun onResponse(call: Call<Void>, response: Response<Void>) {
+                    // do nothing
+                }
+            })
+        }
     }
 
     private fun serviceIsRunningInForeground(context: Context): Boolean {
